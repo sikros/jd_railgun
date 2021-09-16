@@ -6,8 +6,13 @@ from datetime import datetime
 from urllib.parse import quote
 from PyQt5.QtWidgets import (QWidget,QMessageBox, QApplication, QVBoxLayout, QHBoxLayout,QTextBrowser, QDesktopWidget, QTextEdit, QLabel, QLineEdit, QPushButton,QFileDialog, QProgressBar,)
 from PyQt5.QtCore import QUrl, pyqtSlot,Qt
+from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEngineScript, QWebEnginePage
-
+_app_ver=1.0
+_app_url='https://cdn.starchina.top/app/version'
+_app_data={'name':'某东的超电磁炮'}
+_r=requests.post(_app_url,data=_app_data)
+verdata=json.loads(_r.text)
 
 class MyWebEngineView(QWebEngineView):
     def __init__(self, *args, **kwargs):                          
@@ -36,7 +41,6 @@ class Browser(QWidget):
 
     def clicklink(self,url):
         nowtext=self.logEdit.toHtml()
-        print(url.url())
         s.load(url)
         s.loadProgress.connect(self.showlog)
         s.resize(500, 400)
@@ -108,11 +112,15 @@ class Browser(QWidget):
         self.show()
         self.resize(1024, 900)
         self.center()        
-        self.setWindowTitle('某东的超电磁炮(内测版)')
+        self.setWindowTitle('某东的超电磁炮')
     
     def msg(self,title,content):
         QMessageBox.information(self,title,content)
  
+    def update(self,title,content,url):
+        r=QMessageBox.information (self,title,content,QMessageBox.Yes|QMessageBox.No,QMessageBox.Yes)
+        if r==QMessageBox.Yes:
+            QDesktopServices.openUrl(QUrl(url))
 
     def text_changed(self):
         cursor = self.logEdit.textCursor()
@@ -157,28 +165,24 @@ class Browser(QWidget):
     @pyqtSlot()
     def post_to_cloud(self):
         cookie=self.ckEdit.text().strip()        
-        cookieDict = {}
-        cookies = cookie.split(";")
-        for co in cookies:
-            co = co.strip()
-            p = co.split('=')
-            value = co.replace(p[0]+'=', '').replace('"', '')
-            cookieDict[p[0]]=value
-        if "pt_pin" in cookieDict.keys() and "pt_key" in cookieDict.keys():
-            cookiekey={"pt_key": cookieDict["pt_key"],"pt_pin": cookieDict["pt_pin"]}        
-            cloud_url="http://mads.work:8000/api/cklogin"
-            r=requests.post(cloud_url,json=cookiekey)
+        if "pt_pin" in cookie and "pt_key" in cookie:
+            cookiekey={"ck": cookie}        
+            cloud_url=verdata['server']['postck']
+            r=requests.post(cloud_url,data=cookiekey)
             r_data=r.json()
-            self.log('结果：<font color="#FF0000">%s</font>' % r_data.get('message'))
-            login_data=r_data.get('data')
-            if login_data:
-                userinfo[login_data['nickName']]=login_data
-                userinfo[login_data['nickName']]['cookie']=cookie
+            self.log('结果：<font color="#0000FF">%s</font><font color="#FF0000">%s</font>' % (r_data.get('name'),r_data.get('msg')))
+            if r_data['code']==200:
+                username=r_data.get('name')
+                userinfo[username]={
+                    "nickName":username,
+                    "timestamp":time.time(),
+                    "cookie":cookie
+                }
                 with open ('jdck.json','w+') as f:
-                    f.write(json.dumps(userinfo))
-                
-                self.msg('提交成功',r_data.get('message'))
-
+                    f.write(json.dumps(userinfo))                
+                self.msg('提交成功',r_data.get('name')+r_data.get('msg'))
+            else:
+                self.msg('提交失败',r_data.get('name')+r_data.get('msg'))
 
         else:            
             self.log('无效的Cookies，请重新输入或登陆提取')
@@ -201,16 +205,18 @@ class logform(QWebEngineView):
 
 if __name__ == '__main__':    
     app = QApplication(sys.argv)    
-    b = Browser()
-    b.log(u'Design by <a href=\'https://www.starchina.top\'>Kim</a> & Powerd by <a href=\'http://mads.vip/\'>Mads</a> ©GPL Licensed')
+    b = Browser()    
+    b.log(u'<font color="#FF0000">%s</font> Design by <a href=\'https://www.starchina.top\'>Kim</a> & Powerd by <a href=\'http://mads.vip/\'>Mads</a> &copy; GPL Licensed' % verdata['readme'])
     s = logform()
+    if (verdata['ver'] > _app_ver):        
+        b.update('有新版本','版本号:%s\n\n更新内容:%s\n\n是否现在下载新版?'%(verdata['ver'],verdata['whatsnew']),verdata['url'])
 
     r=requests.get('http://api.mads.vip/update.txt')
     r_data=json.loads(r.content.decode('utf8'))
     r_msg=r_data.get('JD代挂').get('公告')
     if r_msg:
-        b.log(r_msg)
-    r=requests.get('https://api.starchina.top/shop/promotion?site=%E4%BA%AC%E4%B8%9C')
+        b.log('📢%s'% r_msg)
+    r=requests.get('https://api.starchina.top/shop/promotion?site=%E4%BA%AC%E4%B8%9CPC')
     r_data=r.json()
     r_sa = random.sample(r_data.items(), 6) 
     m=''
@@ -244,18 +250,17 @@ if __name__ == '__main__':
                 ul='🥉'            
             else:
                 ul=''
-            timestamp=time.mktime(time.strptime(v['timestamp'].replace(" GMT+0800 (\u4e2d\u56fd\u6807\u51c6\u65f6\u95f4)",""),"%a %b %d %Y %H:%M:%S"))
+            timestamp=v['timestamp']
             time_now=time.time()
             alive_time=int(30-((time_now-timestamp))/60/60/24)
-            readlog="<a href='https://api.starchina.top/jdbeanchange?cookies=%s'><span>更多明细</span></a>" % quote(v['cookie'])
+            readlog="<a href='%s?cookies=%s'><span>更多明细</span></a>" % (verdata['server']['getbean'],quote(v['cookie']))
             user_msg='小白分数:%s 🌱京豆:%s 🧧红包:%s 预计有效期还剩：%s天  %s' % (r_json['data']['userInfo']['xbScore'],r_json['data']['assetInfo']['beanNum'],r_json['data']['assetInfo']['redBalance'],alive_time,readlog)
         else:
             alive='🔴'
             ul=''
             user_msg='Cookie状态已过期，请重新登陆'
-
         b.log('%s<strong>%s</strong>%s:%s' % (alive,k,ul,user_msg))
-    b.logEdit.append('------------------------------------------------------------------------------')
-    b.logEdit.append('<font color="#FF0000">%s</font><br>' % 'Warning：此版本为内部测试版，请勿外传，测试中遇到的问题请上报给Kim')
+    b.logEdit.append('------------------------------------------------------------------------------<br>')
+    
     b.load('https://mcr.jd.com/credit_home/pages/index.html?btPageType=BT&channelName=024') 
     sys.exit(app.exec_())
