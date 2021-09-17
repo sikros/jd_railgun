@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os,sys,random
+import os,sys,random,win32api
 import json,requests,time
 from datetime import datetime
 from urllib.parse import quote
@@ -119,8 +119,9 @@ class Browser(QWidget):
  
     def update(self,title,content,url):
         r=QMessageBox.information (self,title,content,QMessageBox.Yes|QMessageBox.No,QMessageBox.Yes)
-        if r==QMessageBox.Yes:
-            QDesktopServices.openUrl(QUrl(url))
+        if r==QMessageBox.Yes:       
+            win32api.ShellExecute(0, 'open', 'update.exe', str(_app_ver),'',1)
+            sys.exit()
 
     def text_changed(self):
         cursor = self.logEdit.textCursor()
