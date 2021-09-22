@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(['JDRailgun.py'],
-             pathex=['C:\\Users\\sikro\\Documents\\CodeSpaces\\jd'],
+             pathex=['C:\\Users\\sikro\\Documents\\CodeSpaces\\jd_railgun'],
              binaries=[],
              datas=[],
              hiddenimports=[],

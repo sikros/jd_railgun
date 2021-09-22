@@ -1,1 +1,7 @@
 jdck.json
+JDRailgun.spec
+/build
+/dist
+/__pycache__
+update.spec
+JDRailgun.spec

@@ -41,18 +41,21 @@ class Browser(QWidget):
 
     def clicklink(self,url):
         nowtext=self.logEdit.toHtml()
-        s.load(url)
-        s.loadProgress.connect(self.showlog)
-        s.resize(500, 400)
-        s.setWindowTitle('更多明细拉取中')
-        s.show()
+        if '?cookies=' in url.url():
+            s.load(url)
+            s.loadProgress.connect(self.showlog)
+            s.resize(500, 400)
+            s.setWindowTitle('更多明细拉取中')
+            s.show()
+        else:
+            QDesktopServices.openUrl(url)
         self.logEdit.setHtml(nowtext)
 
-    def showlog(self,a):
-        s.setWindowTitle('详更多明细拉取中,进度%s%%' % a)
-        if a==0:
+    def showlog(self,prog):
+        s.setWindowTitle('详更多明细拉取中,进度%s%%' % prog)
+        if prog==0:
             s.setWindowTitle('更多明细拉取中，请稍等')
-        if a==100:
+        if prog==100:
             s.setWindowTitle('更多明细日志')
 
     def init_ui(self):
@@ -102,7 +105,6 @@ class Browser(QWidget):
         naviBox.addWidget(chooseJsBtn)
         topBox.addLayout(naviBox)
         self.webView.loadProgress.connect(progBar.setValue)
-        
       
         layout = QVBoxLayout(self)
         layout.addWidget(self.webView)
